@@ -1,1 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat with PoultaVet AI</title>
+<link rel="icon" href="{{ url_for('static', filename='logo.png') }}" type="image/x-icon" class="rounded-full mr-2">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
+<style>
+    /* Custom styles can go here */
+    /* Change button and header colors to maroon */
+    .bg-maroon-500 {
+        background-color: #849DAF;
+        color: #000000 !important;
+    }
+
+    .bg-maroon-model {
+        
+        background-color: #87CEEB;
+        background-image: linear-gradient(to bottom left, #4169E1, #4169E1);
+        
+        
+    }
+    .border-maroon-500 {
+        border-color: #000000;
+    }
+    /* Set a fixed height for the messages container and make it scrollable */
+    .messages-container {
+        height: 70vh;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    /* Style user messages in grey bubbles */
+    .user-message {
+        background-color: #f3f3f3;
+        color: #333;
+        padding: 0.5rem;
+        margin-bottom: 0.5rem;
+        border-radius: 0.8rem;
+    }
+    /* Hide scrollbar while still allowing scrolling */
+    .messages-container::-webkit-scrollbar {
+        width: 0;
+        background: transparent;
+    }
+
+    .download-icon {
+        width: 25px; /* Adjust size as needed */
+        height: 25px; /* Adjust size as needed */
+        position: absolute;
+        bottom: 5px; /* Adjust vertical position */
+        right: 5px; /* Adjust horizontal position */
+        cursor: pointer;
+    }
+    
+    
+    
+</style>
+</head>
+<body class="bg-gray-100 h-screen flex flex-col">
+
+    <header class="bg-maroon-model text-white py-4">
+        <div class="container mx-auto flex justify-between items-center px-4">
+            <div class="flex items-center">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="w-12 h-12 rounded-full mr-2">
+                <h1 class="text-xl font-bold">Chat with PoultaVet AI</h1>
+            </div>
+            
+            <a href="https://www.youtube.com/watch?v=NYYmF2Dwco4" target="_blank" class="ml-auto">
+                <img src="{{ url_for('static', filename='info.png') }}" alt="Info" class="w-8 h-8">
+                
+            </a>
+            <!-- Add any additional content or buttons here -->
+        </div>
+    </header>
+    
+    
+    <main class="flex-1 flex flex-col items-center justify-between">
+        <div class="bg-white p-4 rounded-lg shadow-md w-full md:max-w-lg lg:max-w-xl xl:max-w-2xl messages-container" id="messagesContainer">
+            <div class="messages mb-4">
+                <!-- Messages will be dynamically added here -->
+            </div>
+        </div>
+        <form id="messageForm" class="bg-white p-4 rounded-lg shadow-md w-full md:max-w-lg lg:max-w-xl xl:max-w-2xl">
+            <div class="flex items-center">
+                <input id="userMessage" type="text" placeholder="Type your message..." class="flex-1 min-w-0 border border-maroon-500 rounded-md py-2 px-4">
+                <input type="hidden" id="emailProvided" value="0"> <!-- Hidden input for email provided status -->
+                <button id="sendButton" type="submit" class="bg-maroon-model hover:bg-maroon-700 text-white font-semibold py-2 px-4 ml-2 rounded-md">Send</button>
+            </div>
+        </form>
+    </main>
+    <footer class="bg-gray-200 text-gray-700 py-4">
+        <div class="container mx-auto text-center">
+            <p>&copy; 2024 PoultaVet AI <span style="color: #800000;">Powered by Google's GEMINI</span></p>
+        </div>
+    </footer>
+    <script>
+        const messageForm = document.getElementById('messageForm');
+        const userMessageInput = document.getElementById('userMessage');
+        const emailProvidedInput = document.getElementById('emailProvided'); // Get the hidden input for email provided status
+        const messagesContainer = document.getElementById('messagesContainer');
+    
+        // Add an initial message from the chatbot
+        addModelMessage('PoultaVet AI', "<b>PoultaVet AI:</b> <br> I'm a chatbot specialized in poultry health. I can identify diseases, recommend treatments, and provide advice on managing chicken health", 'left');
+
+        addModelMessage('PoultaVet AI', "Would you like to sign up for email alerts? Reply with Y for yes or N for no (Y/N).", 'left');
+
+        
+
+        messageForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userMessage = userMessageInput.value.trim();
+            const emailProvided = parseInt(emailProvidedInput.value); // Parse the email provided status
+            if (userMessage !== '') {
+                addUserMessage('You', '<b>Me:</b> <br>'+userMessage, 'right');
+                userMessageInput.value = '';
+                scrollToBottom();
+                const response = await sendMessage(userMessage, emailProvided); // Send email provided status to backend
+                addModelMessage('PoultaVet AI', response.response, 'left'); // Use response.response to access the actual response
+                scrollToBottom();
+                
+            }
+        });
+    
+        async function sendMessage(message, emailProvided) {
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ user_input: message, email_provided: emailProvided }), // Send email provided status to backend
+            }).then((res) => res.json());
+    
+            return response; // Return the entire JSON response
+        }
+    
+        function addUserMessage(sender, message, alignment) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('flex', 'mb-2');
+            if (alignment === 'right') {
+                messageElement.classList.add('justify-end');
+            } else {
+                messageElement.classList.add('justify-start');
+            }
+            messageElement.innerHTML = `
+                <div class="rounded-md p-2 bg-maroon-500 text-white max-w-sm">${message}</div>
+            `;
+            messagesContainer.appendChild(messageElement);
+            disableButton();
+        }
+
+        function addModelMessage(sender, message, alignment) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('flex', 'mb-2');
+            if (alignment === 'right') {
+                messageElement.classList.add('justify-end');
+            } else {
+                messageElement.classList.add('justify-start');
+            }
+        
+            if (message.includes('Warning:')) {
+                // Add download image for messages containing 'Warning:'
+                messageElement.innerHTML = `
+                    <div class="rounded-md p-2 bg-maroon-model text-white max-w-sm relative">
+                        <span>${message}</span><br><br>
+                        <img src="{{ url_for('static', filename='downloadButton.png') }}" alt="Download Icon" class="download-icon" onclick="downloadFile()">
+                    </div>
+                `;
+            } else {
+                // Regular message without download image
+                messageElement.innerHTML = `
+                    <div class="rounded-md p-2 bg-maroon-model text-white max-w-sm">${message}</div>
+                `;
+            }
+        
+            messagesContainer.appendChild(messageElement);
+            enableButton();
+        }
+        
+        function downloadFile() {
+            // Specify the correct path to the file you want to download relative to your web app's URL structure
+            var downloadUrl = '{{ url_for('static', filename='Report.pdf') }}';
+            var link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = 'report.pdf';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        function downloadFile() {
+            // Specify the correct path to the file you want to download relative to your web app's URL structure
+            var downloadUrl = '{{ url_for('static', filename='Report.pdf') }}';
+            var link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = 'report.pdf';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+
+    
+        function scrollToBottom() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function disableButton() {
+            var button = document.getElementById('sendButton');
+            button.style.backgroundImage = 'linear-gradient(to bottom, #CCCCCC, #CCCCCC)';
+            button.disabled = true;
+            button.style.cursor = 'not-allowed';
+            button.style.pointerEvents = 'none';
+        }
+        
+        function enableButton() {
+            var button = document.getElementById('sendButton');
+            button.style.backgroundImage = 'linear-gradient(to bottom left, #4169E1, #4169E1)';
+            button.disabled = false;
+            button.style.cursor = '';
+            button.style.pointerEvents = '';
+        }
+
+        
+        
+    </script>
+</body>
+</html>
 
